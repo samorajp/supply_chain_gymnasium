@@ -1,0 +1,44 @@
+from gymnasium.wrappers import FilterObservation
+from rich import print
+
+from supply_chain_gymnasium.agents.agent_fixed_order_level import (
+    evaluate_fixed_order_level_agent,
+)
+from supply_chain_gymnasium.agents.agent_q_learning import QLearningAgent
+from supply_chain_gymnasium.envs.gymnasium_warehouse_env import WarehouseEnv
+
+if __name__ == "__main__":
+    demand_sequence = [0, 0, 0, 2, 0, 3, 4] * 52
+    env = WarehouseEnv(
+        daily_demand_sequences=[demand_sequence],
+        allowed_order_quantities=[0, 2],
+        target_service_level=0.95,
+        initial_inventory_level=0,
+        lead_time=1,
+        past_demands_flag_length=1,
+        lowest_inventory_level=-10,
+        highest_inventory_level=10,
+        render_mode=None,
+    )
+
+    for order_level in range(-4, 9):
+        total_reward = evaluate_fixed_order_level_agent(env, order_level)
+        print(
+            f"Order Level: {order_level}, Total Reward: {total_reward}, Per day: {total_reward / len(demand_sequence):.2f}"
+        )
+
+    env = FilterObservation(
+        env,
+        filter_keys=[
+            "days_left",
+            "inventory_position",
+        ],
+    )
+    q_learning_agent = QLearningAgent(
+        env=env,
+        alpha=0.1,
+        gamma=1,
+        epsilon=0.5,
+        logging_interval=1000,
+    )
+    q_learning_agent.learn(num_episodes=1000000)
